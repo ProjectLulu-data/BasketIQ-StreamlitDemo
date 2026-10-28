@@ -92,14 +92,29 @@ def show_associations():
         selected.to_csv(index=False).encode("utf-8"),
         file_name="BasketIQ_association_rules.csv", mime="text/csv",
     )
-    with st.expander("Threshold experiments"):
+    with st.expander("Threshold experiments (saved runs; not affected by sliders)"):
         st.dataframe(parameter_study, use_container_width=True, hide_index=True)
     tab1, tab2 = st.tabs(["Rule distribution", "Highest-lift rules"])
-    with tab1:
-        show_chart("results/02_Association_Rules/rules_scatter.png")
-    with tab2:
-        show_chart("results/02_Association_Rules/top_rules.png")
-    st.caption("Filters explore the saved rules; they do not rerun Apriori.")
+    if selected.empty:
+        with tab1:
+            st.info("No rules match these thresholds. Try lowering a filter.")
+        with tab2:
+            st.info("No rules match these thresholds. Try lowering a filter.")
+    else:
+        with tab1:
+            st.scatter_chart(selected, x="support", y="confidence", size="lift")
+            st.caption("Rule support and confidence for the currently filtered rules; bubble size indicates lift.")
+        with tab2:
+            top_rules = selected.head(10).reset_index(drop=True).copy()
+            top_rules.index = top_rules.index + 1
+            st.bar_chart(top_rules["lift"])
+            top_rules["Rule"] = top_rules["if_bought"] + " → " + top_rules["also_buys"]
+            st.dataframe(
+                top_rules[["Rule", "support", "confidence", "lift"]],
+                use_container_width=True, hide_index=True,
+            )
+            st.caption("Bars correspond to the rule rows in the table below, ranked by lift.")
+    st.caption("The rule table and both charts follow your filters. Apriori results are loaded from saved CSVs; the algorithm is not rerun.")
 
 
 def show_dbscan():
