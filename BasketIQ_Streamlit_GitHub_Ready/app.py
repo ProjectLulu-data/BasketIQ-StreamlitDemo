@@ -74,7 +74,7 @@ def show_associations():
         rules[column] = pd.to_numeric(rules[column], errors="coerce")
 
     cols = st.columns(3)
-    support = cols[0].slider("Minimum support", 0.0, 0.05, 0.01, 0.001)
+    support = cols[0].slider("Minimum support", 0.0, 0.05, 0.01, 0.001, format="%.3f")
     confidence = cols[1].slider("Minimum confidence", 0.0, 1.0, 0.5, 0.05)
     lift = cols[2].slider("Minimum lift (exclusive)", 0.0, 55.0, 1.0, 0.5)
     selected = rules.loc[
