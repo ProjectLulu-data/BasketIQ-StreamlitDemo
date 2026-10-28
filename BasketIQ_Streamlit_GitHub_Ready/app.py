@@ -2,6 +2,7 @@
 from pathlib import Path
 
 import altair as alt
+import plotly.graph_objects as go
 import pandas as pd
 import streamlit as st
 
@@ -9,6 +10,7 @@ from quality import validate_outputs
 
 
 ROOT = Path(__file__).resolve().parent
+
 st.set_page_config(
     page_title="BasketIQ | Retail Intelligence",
     page_icon="🛒",
@@ -51,10 +53,121 @@ def show_chart(relative_path, caption=None):
         st.error(f"Chart not found: {relative_path}")
         return
 
-    st.image(str(path), use_container_width=True)
+    st.image(
+        str(path),
+        use_container_width=True,
+    )
 
     if caption:
         st.caption(caption)
+
+
+def rule_connections_chart(top_rules):
+    antecedents = list(
+        dict.fromkeys(
+            top_rules["if_bought"].astype(str)
+        )
+    )
+
+    consequents = list(
+        dict.fromkeys(
+            top_rules["also_buys"].astype(str)
+        )
+    )
+
+    src_map = {
+        name: i
+        for i, name in enumerate(antecedents)
+    }
+
+    dst_map = {
+        name: i + len(antecedents)
+        for i, name in enumerate(consequents)
+    }
+
+    def short_label(value):
+        if len(value) <= 31:
+            return value
+        return value[:28] + "..."
+
+    hover_rows = [
+        [
+            row.if_bought,
+            row.also_buys,
+            row.support * 100,
+            row.confidence * 100,
+            row.lift,
+        ]
+        for row in top_rules.itertuples(index=False)
+    ]
+
+    fig = go.Figure(
+        go.Sankey(
+            arrangement="snap",
+            node=dict(
+                label=[
+                    short_label(name)
+                    for name in (
+                        antecedents + consequents
+                    )
+                ],
+                customdata=(
+                    antecedents + consequents
+                ),
+                hovertemplate=(
+                    "%{customdata}<extra></extra>"
+                ),
+                pad=17,
+                thickness=15,
+                color=(
+                    ["#2563eb"] * len(antecedents)
+                    + ["#059669"] * len(consequents)
+                ),
+            ),
+            link=dict(
+                source=[
+                    src_map[value]
+                    for value in top_rules["if_bought"]
+                ],
+                target=[
+                    dst_map[value]
+                    for value in top_rules["also_buys"]
+                ],
+                value=(
+                    top_rules["support"] * 100
+                ).tolist(),
+                customdata=hover_rows,
+                color="rgba(99, 102, 241, 0.35)",
+                hovertemplate=(
+                    "%{customdata[0]} → "
+                    "%{customdata[1]}<br>"
+                    "Support: "
+                    "%{customdata[2]:.2f}%<br>"
+                    "Confidence: "
+                    "%{customdata[3]:.2f}%<br>"
+                    "Lift: "
+                    "%{customdata[4]:.2f}"
+                    "<extra></extra>"
+                ),
+            ),
+        )
+    )
+
+    fig.update_layout(
+        height=max(
+            450,
+            min(800, 85 * len(top_rules)),
+        ),
+        margin=dict(
+            l=25,
+            r=25,
+            t=15,
+            b=15,
+        ),
+        font=dict(size=11),
+    )
+
+    return fig
 
 
 def show_overview():
@@ -248,14 +361,21 @@ def show_associations():
             hide_index=True,
         )
 
-    tab1, tab2 = st.tabs(
+    tab0, tab1, tab2 = st.tabs(
         [
+            "Product connections",
             "Rule distribution",
             "Highest-lift rules",
         ]
     )
 
     if selected.empty:
+        with tab0:
+            st.info(
+                "No matching product connections. "
+                "Try lowering a filter."
+            )
+
         with tab1:
             st.info(
                 "No rules match these thresholds. "
@@ -269,6 +389,58 @@ def show_associations():
             )
 
     else:
+        with tab0:
+            st.subheader(
+                "Which products are bought together?"
+            )
+
+            ordering = st.radio(
+                "Show strongest connections by",
+                ["Support", "Lift"],
+                horizontal=True,
+                key="arm_flow_order",
+            )
+
+            limit = st.select_slider(
+                "Maximum number of connections",
+                options=[5, 8, 10, 15],
+                value=8,
+                key="arm_flow_limit",
+            )
+
+            order_col = (
+                "support"
+                if ordering == "Support"
+                else "lift"
+            )
+
+            top_connections = selected.nlargest(
+                limit,
+                order_col,
+            )
+
+            st.plotly_chart(
+                rule_connections_chart(
+                    top_connections
+                ),
+                use_container_width=True,
+                config={
+                    "displayModeBar": False
+                },
+            )
+
+            st.caption(
+                "Blue: purchased product or itemset. "
+                "Green: associated product or itemset. "
+                "Connections run from antecedent "
+                "to consequent. Link thickness "
+                "represents rule support, not "
+                "quantity sold. Hover over a connection "
+                "to see full names, confidence and lift. "
+                "The diagram follows the filters above. "
+                "Association does not imply causation."
+            )
+
         with tab1:
             st.scatter_chart(
                 selected,
@@ -278,9 +450,9 @@ def show_associations():
             )
 
             st.caption(
-                "Rule support and confidence for the "
-                "currently filtered rules; "
-                "bubble size indicates lift."
+                "Support versus confidence for the "
+                "filtered rules. Bubble size "
+                "indicates lift."
             )
 
         with tab2:
@@ -318,14 +490,14 @@ def show_associations():
             )
 
             st.caption(
-                "Bars correspond to the rule rows "
-                "in the table below, ranked by lift."
+                "Bars correspond to the rules "
+                "in the table, ranked by lift."
             )
 
     st.caption(
-        "The rule table and both charts follow "
-        "your filters. Apriori results are loaded "
-        "from saved CSVs; the algorithm is not rerun."
+        "All ARM charts follow the current filters. "
+        "Apriori results are loaded from saved CSV files; "
+        "the algorithm is not rerun."
     )
 
 
