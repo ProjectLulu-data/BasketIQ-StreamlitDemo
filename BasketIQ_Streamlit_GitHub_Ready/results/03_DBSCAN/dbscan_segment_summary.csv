@@ -1,0 +1,4 @@
+DBSCAN_Cluster,Customers,Avg_Recency,Median_Recency,Avg_Frequency,Median_Frequency,Avg_GrossMonetary,Median_GrossMonetary,Percentage
+-1,169,297.53,298.0,29.56,7.0,31567.43,4366.78,2.89
+0,4103,138.56,59.0,7.32,4.0,2741.52,1312.21,70.11
+1,1580,351.82,386.5,1.0,1.0,307.12,229.48,27.0

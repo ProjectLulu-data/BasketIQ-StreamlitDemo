@@ -1,0 +1,2 @@
+identified_customers,merchandise_lines,product_baskets,distinct_stockcodes,countries,gross_positive_sales_gbp,source
+5852,1003357,39516,4895,43,19643861.62,Audited BasketIQ merchandise CSV (baseline v1)

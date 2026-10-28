@@ -1,0 +1,5 @@
+RecordStatus,RowCount,ShareOfRawPercent
+Positive-sale candidate,1007913,94.429
+Possible duplicate (excluded from baseline),34335,3.217
+Cancellation invoice,19104,1.79
+Nonpositive or invalid quantity/price,6019,0.564

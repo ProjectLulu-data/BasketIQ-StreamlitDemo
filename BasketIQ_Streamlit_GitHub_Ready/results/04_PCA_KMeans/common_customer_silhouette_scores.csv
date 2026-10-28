@@ -1,0 +1,3 @@
+Method,Customers_evaluated,Distance,Silhouette
+CI3237 K-Means labels,5683,Euclidean,0.4053274447044461
+ADM DBSCAN labels,5683,Euclidean,0.3212189908565769
